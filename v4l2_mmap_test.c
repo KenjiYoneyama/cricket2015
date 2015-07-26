@@ -23,9 +23,11 @@
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
-#define CAM_WIDTH (320)
-#define CAM_HEIGHT (240)
+#define CAM_WIDTH 320
+#define CAM_HEIGHT 240
 //#define SLEEP 1
+//#define CAP_FPS 1
+
 
 struct buffer {
   void   *start;
@@ -367,8 +369,28 @@ static void open_device(void)
 int dead_line=10;
 
 static void *cap_loop(){
+
+#ifdef CAP_FPS
+  struct timeval st_t, en_t, sub_t;
+  int xxx=0;
+  gettimeofday(&st_t, NULL);
+  gettimeofday(&en_t, NULL);
+#endif
+
   while(cam_globes.endstate==0){
     cap_one_frame();
+
+#ifdef CAP_FPS
+    if(xxx++>100){
+      xxx=0;
+      gettimeofday(&en_t, NULL);
+      timersub(&en_t, &st_t, &sub_t);
+      printf("cap_fps:%d\n",
+	     (int)(100.0/((double)sub_t.tv_sec+0.000001*(double)sub_t.tv_usec)));
+      gettimeofday(&st_t, NULL);
+    }
+#endif
+
   }
 }
 
@@ -378,12 +400,62 @@ static void capturing_thread(pthread_t* cap_thread){
 }
 
 static void image_processing(){
-  int i, j, k, x0, x1;
+  int i, j, k, t, x0, x1;
   int y, u, v, r=0, g=0, b=0;
+  unsigned char* yuyv=(unsigned char*)buffers->start;
+  for(j=0;j<CAM_HEIGHT;j++){
+    for(i=0;i<CAM_WIDTH;i++){
+      y=yuyv[(j*CAM_WIDTH+i)*2];
+      u=yuyv[((j*CAM_WIDTH+i)/2)*4+1]-128;  // even:Yuyv odd:yuYv
+      v=yuyv[((j*CAM_WIDTH+i)/2)*4+3]-128;
 
-  
+      r=(1.0*(y-16)/219
+	 +1.602*v/224)*255;       // red, the color of the floor and dots
+      g=(1.0*(y-16)/219
+      	 -0.344*u/224
+      	 -0.714*v/224)*255;       // green, no need
+      
+      /*
+      b=50-(( (y-29>0) ? y-29 : -y+29 )*0.6
+       	    +( (u-14>0) ? u-14 : -u+14 )*1.5
+	    + ( (v+6>0) ? v+6 : -v-6 )*1.2);  // blue, the color of the marker
+      */
+      b=(1.0*(y-16)/219
+	 +1.77*u/224)*255;
 
+      r=(r>255)?255:(r<0)?0:r; 
+      g=(g>255)?255:(g<0)?0:g; 
+      b=(b>255)?255:(b<0)?0:b; 
+
+      cam_globes.y_bits[j][i][0]=r;
+      cam_globes.y_bits[j][i][1]=g;
+      cam_globes.y_bits[j][i][2]=b;
+
+      cam_globes.y_bits[j+400][i][0]=r;
+      cam_globes.y_bits[j+400][i][1]=r;
+      cam_globes.y_bits[j+400][i][2]=r;
+      cam_globes.y_bits[j+400][i+350][0]=g;
+      cam_globes.y_bits[j+400][i+350][1]=g;
+      cam_globes.y_bits[j+400][i+350][2]=g;
+      cam_globes.y_bits[j+400][i+700][0]=b;
+      cam_globes.y_bits[j+400][i+700][1]=b;
+      cam_globes.y_bits[j+400][i+700][2]=b;
+
+    }
+  }
 }
+
+static void *proc_loop(){
+  while(cam_globes.endstate==0){
+    image_processing();
+  }
+}
+
+static void processing_thread(pthread_t* proc_thread){
+  if(pthread_create(proc_thread, NULL, proc_loop, NULL) != 0)
+    perror("pthread_create()");
+}
+      
 
 void disp0(){
   glClear(GL_COLOR_BUFFER_BIT);
@@ -447,7 +519,7 @@ void monitoring_window(){
 }
 
 int main(){
-  pthread_t cap_thread;
+  pthread_t cap_thread, proc_thread;
   
   init_globes();
 
@@ -456,6 +528,8 @@ int main(){
   start_streaming();
   capturing_thread(&cap_thread);
   
+  processing_thread(&proc_thread);
+
   monitoring_window();
 
   pthread_join(cap_thread, NULL);
