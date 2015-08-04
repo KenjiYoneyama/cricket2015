@@ -21,6 +21,9 @@
 #include<GL/glu.h>
 #include<GL/gl.h>
 
+#ifndef V4L2_MMAP_H
+#define V4L2_MMAP_H
+
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
 #define CAM_WIDTH 320
@@ -44,7 +47,7 @@ struct cam_globes{
   GLubyte y_bits[1024][1024][3];
 } cam_globes;
 
-static void init_globes(){
+static void init_cam_globes(){
   int i,j,k;
   cam_globes.endstate=0;
   for(i=0;i<1024;i++){
@@ -365,3 +368,5 @@ static void open_device(void)
 	exit(EXIT_FAILURE);
   }
 }
+
+#endif
