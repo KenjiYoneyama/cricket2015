@@ -1,8 +1,10 @@
 #include "cricket_header.h"
 #include "v4l2_mmap.h"
+#include<math.h>
 
 //#define CAP_FPS
 //#define PRC_FPS
+//#define ENV_FPS
 
 int dead_line=10;
 
@@ -111,6 +113,47 @@ static void *proc_loop(){
 
 void processing_thread(pthread_t* proc_thread){
   if(pthread_create(proc_thread, NULL, proc_loop, NULL) != 0)
+    perror("pthread_create()");
+}
+
+static void env_control(){
+  double centX=250, centY=250;
+  double oX=globes->objX-centX;
+  double oY=globes->objY-centY;
+
+  globes->objX=centX+oX*cos(0.03)+oY*sin(0.03);
+  globes->objY=centY-oX*sin(0.03)+oY*cos(0.03);
+
+  return;
+}
+
+static void *env_loop(){
+#ifdef ENV_FPS
+  struct timeval st_t, en_t, sub_t;
+  int xxx=0;
+  gettimeofday(&st_t, NULL);
+  gettimeofday(&en_t, NULL);
+#endif
+
+  while(globes->endstate==0){
+    env_control();
+    usleep(10000);
+#ifdef ENV_FPS
+    if(xxx++>200){
+      xxx=0;
+      gettimeofday(&en_t, NULL);
+      timersub(&en_t, &st_t, &sub_t);
+      printf("env_control_fps:%d\n",
+	     (int)(200.0/((double)sub_t.tv_sec+0.000001*(double)sub_t.tv_usec)));
+      gettimeofday(&st_t, NULL);
+    }
+#endif
+  
+  }
+}
+
+void environment_thread(pthread_t* env_thread){
+  if(pthread_create(env_thread, NULL, env_loop, NULL) != 0)
     perror("pthread_create()");
 }
       

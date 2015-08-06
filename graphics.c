@@ -8,8 +8,6 @@
 
 struct grph_globes{
   GLubyte random_dots[64][64][3];
-  int floor_width;
-  int floor_height;
 } *grph_globes;
 
 void init_grph_globes(){
@@ -39,38 +37,6 @@ void idle_w(){
   glutPostRedisplay();
 }
 
-void disp_f_(){
-
-  /* TODO */
-  /* 2D->3D measure the cricket's eye height again first*/
-
-  glClear(GL_COLOR_BUFFER_BIT);
-  
-  glEnable(GL_TEXTURE_2D);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 64, 64, 0, GL_RGB, GL_UNSIGNED_BYTE, grph_globes->random_dots);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-  
-  glBegin(GL_QUADS);
-  {
-    glTexCoord2f(0.0, 0.0);
-    glVertex2i(0, 0);
-    glTexCoord2f(0.0, 1.0*2);
-    glVertex2i(0, grph_globes->floor_height);
-    glTexCoord2f(1.25*2, 1.0*2);
-    glVertex2i(grph_globes->floor_width, grph_globes->floor_height);
-    glTexCoord2f(1.25*2, 0.0);
-    glVertex2i(grph_globes->floor_width, 0);
-  }
-  glEnd();
-
-  glDisable(GL_TEXTURE_2D);
-  
-  glutSwapBuffers();
-}
-
-
 void draw_sphere(double oX, double oY){
   glPushMatrix();
   {
@@ -82,26 +48,15 @@ void draw_sphere(double oX, double oY){
 }
 
 void obj_fnc(){
+  /*
   double oX=300;
   double oY=0;
   static int ba=0;
   ba+=1;
   ba=ba%300;
-
   draw_sphere(oX-ba, oY+ba);
-}
-
-void obj_fnc2(){
-  double oX=250;
-  double oY=250;
-  glPushMatrix();
-  {
-    glColor3d(1.0, 0.0, 0.0);
-    glTranslatef(oX, oY, -96.0);
-    glutSolidSphere(100, 18, 24);
-  }
-  glPopMatrix();
-
+  */
+  draw_sphere(globes->objX, globes->objY);
 }
 
 void dots_fnc(){
@@ -310,8 +265,6 @@ void disp_wl(){
 void floor_graphics(int width, int height, char *dsp_no){
   // display (floor)
   init_grph_globes();
-  grph_globes->floor_width=width;
-  grph_globes->floor_height=height;
   int fake_argc=3;
   char *fake_argv[]={"a", "-display", dsp_no};
   glutInit(&fake_argc, fake_argv);
@@ -323,7 +276,6 @@ void floor_graphics(int width, int height, char *dsp_no){
   glutDisplayFunc(disp_f);
   glutIdleFunc(idle_f);
   glClearColor(1.0,1.0,1.0,1.0);
-  //  glOrtho(0, width, height, 0, -1, 1);
 
   glutMainLoop();
 }

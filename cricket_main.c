@@ -44,18 +44,21 @@ void init_globes(){
   globes->endstate=0;
   globes->criX=100;
   globes->criY=200;
-  globes->objX=0;
+  globes->objX=-100;
+  globes->objY=250;
 }
 
 int main(int argc, char **argv){
   init_globes();
+
   if(fork()){   // capturing and processing
-    pthread_t cap_thread, proc_thread;
+    pthread_t cap_thread, proc_thread, env_thread;
 
     init_v4l2_stats();
 
     capturing_thread(&cap_thread);
     processing_thread(&proc_thread);
+    environment_thread(&env_thread);
     monitoring_window();
 
     pthread_join(cap_thread, NULL);
