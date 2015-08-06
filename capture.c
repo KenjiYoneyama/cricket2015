@@ -2,6 +2,7 @@
 #include "v4l2_mmap.h"
 
 //#define CAP_FPS
+//#define PRC_FPS
 
 int dead_line=10;
 
@@ -83,8 +84,28 @@ static void image_processing(){
 }
 
 static void *proc_loop(){
+#ifdef PRC_FPS
+  struct timeval st_t, en_t, sub_t;
+  int xxx=0;
+  gettimeofday(&st_t, NULL);
+  gettimeofday(&en_t, NULL);
+#endif
+
   while(globes->endstate==0){
     image_processing();
+    usleep(10);
+#ifdef PRC_FPS
+    if(xxx++>200){
+      xxx=0;
+      gettimeofday(&en_t, NULL);
+      timersub(&en_t, &st_t, &sub_t);
+      printf("process_fps:%d\n",
+	     (int)(200.0/((double)sub_t.tv_sec+0.000001*(double)sub_t.tv_usec)));
+      gettimeofday(&st_t, NULL);
+    }
+#endif
+
+
   }
 }
 

@@ -24,6 +24,9 @@
 
 // global variables shared among processes
 struct globes{
+  ////////////////////////
+  // physical parametes //
+  ////////////////////////
   double wall_disp_width;
   double wall_disp_height;
   double wall_bezel_right; // following to the display's relative coordinate
@@ -36,6 +39,9 @@ struct globes{
   double floor_bezel_left;
   double floor_bezel_top;
   double floor_bezel_bottom;
+  double eye_height;
+  ////////////////////////
+  ////////////////////////
 
   unsigned char endstate;
   double criX;

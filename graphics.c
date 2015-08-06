@@ -39,7 +39,7 @@ void idle_w(){
   glutPostRedisplay();
 }
 
-void disp_f(){
+void disp_f_(){
 
   /* TODO */
   /* 2D->3D measure the cricket's eye height again first*/
@@ -70,11 +70,12 @@ void disp_f(){
   glutSwapBuffers();
 }
 
+
 void draw_sphere(double oX, double oY){
   glPushMatrix();
   {
     glColor3d(1.0, 0.0, 0.0);
-    glTranslatef(oX, oY, 100.0);
+    glTranslatef(oX, oY, 90.0);
     glutSolidSphere(100, 18, 24);
   }
   glPopMatrix();
@@ -84,10 +85,86 @@ void obj_fnc(){
   double oX=300;
   double oY=0;
   static int ba=0;
-  ba+=10;
+  ba+=1;
   ba=ba%300;
 
   draw_sphere(oX-ba, oY+ba);
+}
+
+void obj_fnc2(){
+  double oX=250;
+  double oY=250;
+  glPushMatrix();
+  {
+    glColor3d(1.0, 0.0, 0.0);
+    glTranslatef(oX, oY, -96.0);
+    glutSolidSphere(100, 18, 24);
+  }
+  glPopMatrix();
+
+}
+
+void dots_fnc(){
+  glEnable(GL_TEXTURE_2D);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 64, 64, 0, GL_RGB, GL_UNSIGNED_BYTE, grph_globes->random_dots);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+  
+  glBegin(GL_QUADS);
+  {
+    glTexCoord2f(0.0, 0.0);
+    glVertex3d(-490, -490, 0);
+    glTexCoord2f(0.0, 1.0*2*3);
+    glVertex3d(-490, 490*2, 0);
+    glTexCoord2f(1.0*2*3, 1.0*2*3);
+    glVertex3d(490*2, 490*2, 0);
+    glTexCoord2f(1.0*2*3, 0.0);
+    glVertex3d(490*2, -490, 0);
+  }
+  glEnd();
+
+  glDisable(GL_TEXTURE_2D);
+}
+
+void disp_f(){
+
+  /* TODO */
+  /* 2D->3D measure the cricket's eye height again first*/
+
+  // get information of the cricket's position
+  double cX=250;
+  double cY=250;
+  double eye=globes->eye_height;
+
+  double cX_max=globes->floor_disp_width+globes->floor_bezel_left+globes->floor_bezel_right;
+  double cY_max=globes->floor_disp_height+globes->floor_bezel_top+globes->floor_bezel_bottom;
+  double DEP=1.0;
+
+  double left=-(cX_max-cX-globes->wall_bezel_left)*DEP/(eye);
+  double right=(cX-globes->wall_bezel_right)*DEP/(eye);
+  double bottom=-(cY_max-cY-globes->wall_bezel_left)*DEP/(eye);
+  double top=(cY-globes->wall_bezel_right)*DEP/(eye);
+  
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  
+  glFrustum(left,
+	    right,
+	    bottom,
+	    top,
+	    DEP,
+	    20000);
+  glRotatef(180, 0.0, 0.0, 1.0);
+  glTranslatef(-cX, -cY, -eye);
+ 
+  glMatrixMode(GL_MODELVIEW);
+  glEnable(GL_DEPTH_TEST);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  obj_fnc();
+  dots_fnc();
+
+  glutSwapBuffers();
 }
 
 void disp_wt(){
@@ -114,14 +191,13 @@ void disp_wt(){
 	    DEP,
 	    20000);
   glRotatef(-90, 1.0, 0.0, 0.0);
-  glTranslatef(-cX, -cY, 0.0);
-  //  glRotatef(180, 0.0, 0.0, 1.0);
-  //  
+  glTranslatef(-cX, -cY, -4.0);
  
   glMatrixMode(GL_MODELVIEW);
   glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   obj_fnc();
+  dots_fnc();
 
   glutSwapBuffers();
 }
@@ -247,7 +323,7 @@ void floor_graphics(int width, int height, char *dsp_no){
   glutDisplayFunc(disp_f);
   glutIdleFunc(idle_f);
   glClearColor(1.0,1.0,1.0,1.0);
-  glOrtho(0, width, height, 0, -1, 1);
+  //  glOrtho(0, width, height, 0, -1, 1);
 
   glutMainLoop();
 }

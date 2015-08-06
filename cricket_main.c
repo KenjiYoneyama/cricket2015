@@ -36,6 +36,8 @@ void init_globes(){
       globes->floor_bezel_top=params;
     }else if(strcmp("FLOOR_BEZEL_BOTTOM", line)==0){
       globes->floor_bezel_bottom=params;
+    }else if(strcmp("EYE_HEIGHT", line)==0){
+      globes->eye_height=params;
     }
   }
   fclose(fp);
@@ -60,7 +62,7 @@ int main(int argc, char **argv){
     uninit_v4l2_stats();
   }else if(fork()){     // floor
     floor_graphics(1920, 1920, ":0.5");
-  }else if(fork()){
+  }else if(fork()){     // walls
     wall_graphics(RIGHT, 1920, 1080, ":0.1");
   }else if(fork()){
     wall_graphics(TOP, 1920, 1080, ":0.2");
