@@ -11,7 +11,7 @@ void draw_sphere(double oX, double oY){
   glPushMatrix();
   {
     glColor3d(1.0, 0.0, 0.0);
-    glTranslatef(oX, oY, 90.0);
+    glTranslatef(oX, oY, 0.0);
     glutSolidSphere(100, 18, 24);
   }
   glPopMatrix();
@@ -26,35 +26,128 @@ void obj_fnc(){
   ba=ba%300;
   draw_sphere(oX-ba, oY+ba);
   */
-  draw_sphere(globes->objX, globes->objY);
+  switch(globes->mode){
+  case 0:
+    draw_sphere(globes->objX, globes->objY);
+    break;
+  case CALI_FBWW:
+    glPushMatrix();
+    {
+      glColor3d(0.0, 0.0, 0.0);
+      glBegin(GL_QUADS);
+      glVertex3d(0,0,0);
+      glVertex3d(0,490,0);
+      glVertex3d(490,490,0);
+      glVertex3d(490,0,0);
+      glEnd();
+    }
+    glPopMatrix();
+    break;
+  case CALI_FWWB:
+    glPushMatrix();
+    {
+      glColor3d(0.0, 0.0, 0.0);
+      glBegin(GL_QUADS);
+      glVertex3d(0,0,0);
+      glVertex3d(0,490,0);
+      glVertex3d(0,490,490);
+      glVertex3d(0,0,490);
 
+      glVertex3d(0,490,0);
+      glVertex3d(490,490,0);
+      glVertex3d(490,490,490);
+      glVertex3d(0,490,490);
+
+      glVertex3d(490,490,0);
+      glVertex3d(490,0,0);
+      glVertex3d(490,0,490);
+      glVertex3d(490,490,490);
+
+      glVertex3d(490,0,0);
+      glVertex3d(0,0,0);
+      glVertex3d(0,0,490);
+      glVertex3d(490,0,490);
+      glEnd();
+
+      glColor3d(1.0, 1.0, 1.0);
+      glBegin(GL_QUADS);
+      glVertex3d(0,0,0);
+      glVertex3d(0,490,0);
+      glVertex3d(490,490,0);
+      glVertex3d(490,0,0);
+      glEnd();
+    }
+    glPopMatrix();
+    break;
+  case CALI_FBWB:
+    glPushMatrix();
+    {
+      glColor3d(0.0, 0.0, 0.0);
+      glBegin(GL_QUADS);
+      glVertex3d(0,0,0);
+      glVertex3d(0,490,0);
+      glVertex3d(490,490,0);
+      glVertex3d(490,0,0);
+
+      glVertex3d(0,0,0);
+      glVertex3d(0,490,0);
+      glVertex3d(0,490,490);
+      glVertex3d(0,0,490);
+
+      glVertex3d(0,490,0);
+      glVertex3d(490,490,0);
+      glVertex3d(490,490,490);
+      glVertex3d(0,490,490);
+
+      glVertex3d(490,490,0);
+      glVertex3d(490,0,0);
+      glVertex3d(490,0,490);
+      glVertex3d(490,490,490);
+
+      glVertex3d(490,0,0);
+      glVertex3d(0,0,0);
+      glVertex3d(0,0,490);
+      glVertex3d(490,0,490);
+      glEnd();
+    }
+    glPopMatrix();
+    break;
+  default:
+    break;
+  }
 }
 
 void dots_fnc(GLubyte pattern[DOTS_SIZE][DOTS_SIZE][3]){
-  glEnable(GL_TEXTURE_2D);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 64, 64, 0, GL_RGB, GL_UNSIGNED_BYTE, pattern);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+  switch(globes->mode){
+  case 0:
+    glEnable(GL_TEXTURE_2D);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 64, 64, 0, GL_RGB, GL_UNSIGNED_BYTE, pattern);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
   
-  glBegin(GL_QUADS);
-  {
-    glTexCoord2f(0.0, 0.0);
-    glVertex3d(-490, -490, 0);
-    glTexCoord2f(0.0, 1.0*2*3);
-    glVertex3d(-490, 490*2, 0);
-    glTexCoord2f(1.0*2*3, 1.0*2*3);
-    glVertex3d(490*2, 490*2, 0);
-    glTexCoord2f(1.0*2*3, 0.0);
-    glVertex3d(490*2, -490, 0);
-  }
-  glEnd();
+    glBegin(GL_QUADS);
+    {
+      glTexCoord2f(0.0, 0.0);
+      glVertex3d(-490, -490, 0);
+      glTexCoord2f(0.0, 1.0*2*3);
+      glVertex3d(-490, 490*2, 0);
+      glTexCoord2f(1.0*2*3, 1.0*2*3);
+      glVertex3d(490*2, 490*2, 0);
+      glTexCoord2f(1.0*2*3, 0.0);
+      glVertex3d(490*2, -490, 0);
+    }
+    glEnd();
 
-  glDisable(GL_TEXTURE_2D);
+    glDisable(GL_TEXTURE_2D);
+    break;
+  default:
+    break;
+  }
 }
 
 static void env_control(){
-  double centX=250, centY=250;
+  double centX=globes->criX, centY=globes->criY;
   double oX=globes->objX-centX;
   double oY=globes->objY-centY;
 

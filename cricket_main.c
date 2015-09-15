@@ -8,7 +8,7 @@ void init_globes(){
   double params;
 
   if ((fp=fopen("physical_parameters.txt", "r"))==NULL){
-    printf("FOE!!\n");
+    printf("FOE:physical_parameters.txt\n");
     exit(EXIT_FAILURE);
   }
   while(fscanf(fp, "%s%lf", line, &params) != EOF){
@@ -42,18 +42,33 @@ void init_globes(){
   }
   fclose(fp);
   globes->endstate=0;
-  globes->criX=100;
-  globes->criY=200;
+  globes->criX=245;
+  globes->criY=245;
   globes->objX=-100;
   globes->objY=250;
+  globes->mode=0;
 }
 
 int main(int argc, char **argv){
+
+  
   init_globes();
 
   if(fork()){   // capturing and processing
     pthread_t cap_thread, proc_thread, env_thread;
+    int options;
 
+    while((options = getopt(argc, argv, "c"))!=-1){
+      switch(options){
+      case 'c':
+	globes->mode=CALIBRATION;
+	break;
+      default:
+	break;
+      }
+    }
+
+    init_cap_globes();
     init_v4l2_stats();
 
     capturing_thread(&cap_thread);

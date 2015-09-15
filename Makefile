@@ -16,6 +16,7 @@ v4l2_mmap_test:v4l2_mmap_test.o
 cricket_main.o:cricket_header.h
 capture.o:cricket_header.h v4l2_mmap.h
 graphics.o:cricket_header.h
-cricket_main:cricket_main.o capture.o graphics.o
+environment.o:cricket_header.h
+cricket_main:cricket_main.o capture.o graphics.o environment.o
 	$(CC) $^ -o $@ $(OPENGLLIBS) $(V4L2LIBS) $(PTHREADLIBS)
 	

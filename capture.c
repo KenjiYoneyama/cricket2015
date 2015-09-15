@@ -1,12 +1,69 @@
 #include "cricket_header.h"
 #include "v4l2_mmap.h"
 #include<math.h>
+#include<string.h>
 
 //#define CAP_FPS
 //#define PRC_FPS
-//#define ENV_FPS
 
 int dead_line=10;
+unsigned char ss_button=0;
+
+struct cap_globes{
+  int left_blank;
+  int left_bezel;
+  int right_blank;
+  int right_bezel;
+  int top_blank;
+  int top_bezel;
+  int bottom_blank;
+  int bottom_bezel;
+  unsigned char red_thresh;
+  unsigned char blue_thresh;
+  unsigned char red_thresh_dark;
+  unsigned char blue_thresh_dark;
+  
+} *cap_globes;
+
+void init_cap_globes(){
+  FILE *fp;
+  char line[255];
+  double params;
+  cap_globes=(struct cap_globes*)malloc(sizeof(struct cap_globes));
+  if((fp=fopen("cap_settings.txt", "r"))==NULL){
+    printf("FOE:cap_settings.txt\n");
+    exit(EXIT_FAILURE);
+  }
+
+  while(fscanf(fp, "%s%lf", line, &params) != EOF){
+    if(strcmp("LEFT_BLANK", line)==0){
+      cap_globes->left_blank=params;
+    }else if(strcmp("LEFT_BEZEL", line)==0){
+      cap_globes->left_bezel=params;
+    }else if(strcmp("RIGHT_BLANK", line)==0){
+      cap_globes->right_blank=params;
+    }else if(strcmp("RIGHT_BEZEL", line)==0){
+      cap_globes->right_bezel=params;
+    }else if(strcmp("TOP_BLANK", line)==0){
+      cap_globes->top_blank=params;
+    }else if(strcmp("TOP_BEZEL", line)==0){
+      cap_globes->top_bezel=params;
+    }else if(strcmp("BOTTOM_BLANK", line)==0){
+      cap_globes->bottom_blank=params;
+    }else if(strcmp("BOTTOM_BEZEL", line)==0){
+      cap_globes->bottom_bezel=params;
+    }else if(strcmp("RED_THRESH", line)==0){
+      cap_globes->red_thresh=params;
+    }else if(strcmp("BLUE_THRESH", line)==0){
+      cap_globes->blue_thresh=params;
+    }else if(strcmp("RED_THRESH_DARK", line)==0){
+      cap_globes->red_thresh_dark=params;
+    }else if(strcmp("BLUE_THRESH_DARK", line)==0){
+      cap_globes->blue_thresh_dark=params;
+    }
+  }
+  fclose(fp);
+}
 
 static void *cap_loop(){
 
@@ -43,6 +100,24 @@ static void image_processing(){
   int i, j, k, t, x0, x1;
   int y, u, v, r=0, g=0, b=0;
   unsigned char* yuyv=(unsigned char*)buffers->start;
+  unsigned char red_map[CAM_HEIGHT][CAM_WIDTH];
+  unsigned char red_map_sm[CAM_HEIGHT][CAM_WIDTH];  // smoothed
+  unsigned char blue_map[CAM_HEIGHT][CAM_WIDTH];
+  unsigned char blue_map_sm[CAM_HEIGHT][CAM_WIDTH]; // smoothed
+  FILE *fp, *fp_cal;
+  static int count_ss=0;
+  char line[255];
+  int red_flag, blue_flag;
+  unsigned char loc_ss_button=0;
+
+  static int wb_list[7][CAM_HEIGHT][CAM_WIDTH]={0};
+  static int wb_count=1500;
+
+  if(ss_button) loc_ss_button=1;
+  if(loc_ss_button==1){
+    sprintf(line, "ScreenShot%d.txt", count_ss++);
+    fp=fopen(line, "w");
+  }
   for(j=0;j<CAM_HEIGHT;j++){
     for(i=0;i<CAM_WIDTH;i++){
       y=yuyv[(j*CAM_WIDTH+i)*2];
@@ -53,35 +128,154 @@ static void image_processing(){
 	 +1.602*v/224)*255;       // red, the color of the floor and dots
       g=(1.0*(y-16)/219
       	 -0.344*u/224
-      	 -0.714*v/224)*255;       // green, no need
-      
-      /*
-      b=50-(( (y-29>0) ? y-29 : -y+29 )*0.6
-       	    +( (u-14>0) ? u-14 : -u+14 )*1.5
-	    + ( (v+6>0) ? v+6 : -v-6 )*1.2);  // blue, the color of the marker
-      */
+      	 -0.714*v/224)*255;       // green, marker
       b=(1.0*(y-16)/219
-	 +1.77*u/224)*255;
-
+	 +1.77*u/224)*255;        // blue, marker
+     
       r=(r>255)?255:(r<0)?0:r; 
       g=(g>255)?255:(g<0)?0:g; 
       b=(b>255)?255:(b<0)?0:b; 
+
+      switch(globes->mode){
+      case CALIBRATION:
+	if(i==0 && j==0 && !(--wb_count)){
+	  wb_count=1500;
+	  globes->mode=CALI_FWWW;
+	}
+	break;
+      case CALI_FWWW:
+	if(i==0 && j==0 && !(--wb_count)){
+	  wb_count=1500;
+	  globes->mode=CALI_FBWW;
+	}
+	if(wb_count==10) wb_list[0][j][i]=y;
+	break;
+      case CALI_FBWW:
+	if(i==0 && j==0 && !(--wb_count)){
+	  wb_count=1500;
+	  globes->mode=CALI_FWWB;
+	}
+	if(wb_count==10) wb_list[1][j][i]=y;
+	break;
+      case CALI_FWWB:
+	if(i==0 && j==0 && !(--wb_count)){
+	  wb_count=1500;
+	  globes->mode=CALI_ACT;
+	}
+	if(wb_count==10) wb_list[2][j][i]=y;
+	break;
+      case CALI_ACT:
+	wb_list[4][j][i]=(wb_list[0][j][i]-wb_list[1][j][i]>20)?0xff:0;
+	wb_list[5][j][i]=(wb_list[2][j][i]>70)?0xff:0;
+	cam_globes.y_bits[j][i+350][0]=wb_list[4][j][i];
+	cam_globes.y_bits[j][i+350][1]=wb_list[5][j][i];
+	cam_globes.y_bits[j][i+700][0]=(wb_list[4][j][i] && wb_list[5][j][i])?0xff:0;
+	if(i==0 && j==0 && !(--wb_count)){
+	  wb_count=1500;
+	  globes->mode=0;
+	}
+	if(wb_count==1400){
+	  if(i==0 && j==0){
+	    if((fp_cal=fopen("filter.txt", "w"))==NULL){
+	      printf("FOE:filter.txt\n");
+	      exit(EXIT_FAILURE);
+	    }
+	  }
+	  if(wb_list[4][j][i] && wb_list[5][j][i]){
+	    fprintf(fp_cal, "%d %d\n", j, i);
+	  }
+	}
+	if(wb_count==1399 && i==0 && j==0){
+	  fclose(fp_cal);
+	}
+	
+	break;
+      default:
+	break;
+      }
+
+      red_flag=0;
+      blue_flag=0;
+
+      if(j<cap_globes->top_blank || j>CAM_HEIGHT-cap_globes->bottom_blank 
+	 || i<cap_globes->left_blank || i>CAM_WIDTH-cap_globes->right_blank){
+	red_map[j][i]=1;
+	blue_map[j][i]=0;
+      }else if(j<cap_globes->top_bezel || j>CAM_HEIGHT-cap_globes->bottom_bezel 
+	       || i<cap_globes->left_bezel || i>CAM_WIDTH-cap_globes->right_bezel){
+	if(r>=cap_globes->red_thresh_dark){
+	  /* TODO */
+	  red_map[j][i]=1;
+	  if(b>cap_globes->blue_thresh_dark){
+	    /* TODO */ 
+	    blue_map[j][i]=1;
+	  }else{
+	    blue_map[j][i]=0;
+	  }
+
+	}else{
+	  red_map[j][i]=0;
+	  blue_map[j][i]=0;
+	}
+
+      }else{
+	if(r>cap_globes->red_thresh){
+	  /* TODO */ 
+	  red_map[j][i]=1;
+	  if(b>cap_globes->blue_thresh){
+	    /* TODO */
+	    blue_map[j][i]=1;
+	  }else{
+	    blue_map[j][i]=0;
+	  }	
+
+	}else{
+	  red_map[j][i]=0;
+	  blue_map[j][i]=0;
+	}
+      }
 
       cam_globes.y_bits[j][i][0]=r;
       cam_globes.y_bits[j][i][1]=g;
       cam_globes.y_bits[j][i][2]=b;
 
-      cam_globes.y_bits[j+400][i][0]=r;
-      cam_globes.y_bits[j+400][i][1]=r;
-      cam_globes.y_bits[j+400][i][2]=r;
+      if(red_map[j][i]){
+	cam_globes.y_bits[j+400][i][0]=r;
+	cam_globes.y_bits[j+400][i][1]=r;
+	cam_globes.y_bits[j+400][i][2]=r;
+      }else{
+	cam_globes.y_bits[j+400][i][0]=0xff;
+	cam_globes.y_bits[j+400][i][1]=0;
+	cam_globes.y_bits[j+400][i][2]=0;
+      }
       cam_globes.y_bits[j+400][i+350][0]=g;
       cam_globes.y_bits[j+400][i+350][1]=g;
       cam_globes.y_bits[j+400][i+350][2]=g;
-      cam_globes.y_bits[j+400][i+700][0]=b;
-      cam_globes.y_bits[j+400][i+700][1]=b;
-      cam_globes.y_bits[j+400][i+700][2]=b;
+      if(red_map[j][i] && blue_map[j][i]){
+	cam_globes.y_bits[j+400][i+700][0]=0;
+	cam_globes.y_bits[j+400][i+700][1]=0;
+	cam_globes.y_bits[j+400][i+700][2]=0xff;
+      }else{
+	cam_globes.y_bits[j+400][i+700][0]=b;
+	cam_globes.y_bits[j+400][i+700][1]=b;
+	cam_globes.y_bits[j+400][i+700][2]=b;
+      }
+      if(j==cap_globes->top_blank || j==CAM_HEIGHT-cap_globes->bottom_blank
+	 || i==cap_globes->left_blank || i==CAM_WIDTH-cap_globes->right_blank){
+	cam_globes.y_bits[j][i][1]=0xff;
+      }
+
+      if(loc_ss_button==1){
+	fprintf(fp, "%d %d %d\n", y, u, v);
+      }
 
     }
+  }
+  if(loc_ss_button==1)
+    fclose(fp);
+  if(loc_ss_button==1){
+    ss_button=0;
+    loc_ss_button=0;
   }
 }
 
@@ -114,49 +308,7 @@ static void *proc_loop(){
 void processing_thread(pthread_t* proc_thread){
   if(pthread_create(proc_thread, NULL, proc_loop, NULL) != 0)
     perror("pthread_create()");
-}
-
-static void env_control(){
-  double centX=250, centY=250;
-  double oX=globes->objX-centX;
-  double oY=globes->objY-centY;
-
-  globes->objX=centX+oX*cos(0.03)+oY*sin(0.03);
-  globes->objY=centY-oX*sin(0.03)+oY*cos(0.03);
-
-  return;
-}
-
-static void *env_loop(){
-#ifdef ENV_FPS
-  struct timeval st_t, en_t, sub_t;
-  int xxx=0;
-  gettimeofday(&st_t, NULL);
-  gettimeofday(&en_t, NULL);
-#endif
-
-  while(globes->endstate==0){
-    env_control();
-    usleep(10000);
-#ifdef ENV_FPS
-    if(xxx++>200){
-      xxx=0;
-      gettimeofday(&en_t, NULL);
-      timersub(&en_t, &st_t, &sub_t);
-      printf("env_control_fps:%d\n",
-	     (int)(200.0/((double)sub_t.tv_sec+0.000001*(double)sub_t.tv_usec)));
-      gettimeofday(&st_t, NULL);
-    }
-#endif
-  
-  }
-}
-
-void environment_thread(pthread_t* env_thread){
-  if(pthread_create(env_thread, NULL, env_loop, NULL) != 0)
-    perror("pthread_create()");
-}
-      
+}      
 
 void disp0(){
   glClear(GL_COLOR_BUFFER_BIT);
@@ -200,6 +352,12 @@ void key0(unsigned char key, int x, int y){
     globes->endstate=1;
     cam_globes.endstate=1;
     break;
+  case 's':
+    ss_button=1;
+    break;
+  case 'I':
+    init_cap_globes();
+    break;
   default:
     break;
   }
@@ -209,7 +367,7 @@ void monitoring_window(){
   int fake_argc=3;
   char *fake_argv[]={"a", "-display", ":0.0"};
   glutInit(&fake_argc, fake_argv);
-  glutInitWindowPosition(0,0);
+  glutInitWindowPosition(100,0);
   glutInitWindowSize(1024, 1024);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
   glutCreateWindow("aaaa");
