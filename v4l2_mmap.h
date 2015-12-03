@@ -26,8 +26,10 @@
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
-#define CAM_WIDTH 320
-#define CAM_HEIGHT 240
+#define CAM_WIDTH 640
+#define CAM_HEIGHT 480
+//#define CAM_WIDTH 320
+//#define CAM_HEIGHT 240
 //#define SLEEP 1
 //#define CAP_FPS 1
 
@@ -44,14 +46,14 @@ static unsigned int     n_buffers;
 
 struct cam_globes{
   unsigned char endstate;
-  GLubyte y_bits[1024][1024][3];
+  GLubyte y_bits[2048][2048][3];
 } cam_globes;
 
 static void init_cam_globes(){
   int i,j,k;
   cam_globes.endstate=0;
-  for(i=0;i<1024;i++){
-    for(j=0;j<1024;j++){
+  for(i=0;i<2048;i++){
+    for(j=0;j<2048;j++){
       for(k=0;k<3;k++){
 	cam_globes.y_bits[i][j][k]=0;
       }

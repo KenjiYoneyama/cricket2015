@@ -38,6 +38,16 @@ void init_globes(){
       globes->floor_bezel_bottom=params;
     }else if(strcmp("EYE_HEIGHT", line)==0){
       globes->eye_height=params;
+    }else if(strcmp("EYE_POS", line)==0){
+      globes->eye_pos=params;
+    }else if(strcmp("OBJ_HOME_DISTANCE", line)==0){
+      globes->obj_home_distance=params;
+    }else if(strcmp("OBJ_VELOCITY", line)==0){
+      globes->obj_velocity=params;
+    }else if(strcmp("OBJ_SIZE", line)==0){
+      globes->obj_size=params;
+    }else if(strcmp("OBJ_ANGLE", line)==0){
+      globes->obj_angle=params;
     }
   }
   fclose(fp);
@@ -46,7 +56,20 @@ void init_globes(){
   globes->criY=245;
   globes->objX=-100;
   globes->objY=250;
+  globes->objZ=0;
   globes->mode=0;
+  globes->filter=0;
+  globes->col=0;
+  globes->disp_update[0]=0;
+  globes->disp_update[1]=0;
+  globes->disp_update[2]=0;
+  globes->disp_update[3]=0;
+  globes->record=0;
+  globes->render=OBJECT_OFF;
+  globes->looming=LOOMING_OFF;
+  globes->looming_angle=LOOMING_FRONT;
+  globes->black=0;
+  globes->marker=0;
 }
 
 int main(int argc, char **argv){
@@ -58,11 +81,32 @@ int main(int argc, char **argv){
     pthread_t cap_thread, proc_thread, env_thread;
     int options;
 
-    while((options = getopt(argc, argv, "c"))!=-1){
+    while((options = getopt(argc, argv, "acrfbm"))!=-1){
       switch(options){
+      case 'a':
+	globes->mode=A_TRACK;
+	printf("ANTENNA_TRACKING_MODE\n");
+	break;
       case 'c':
 	globes->mode=CALIBRATION;
+	printf("CALIBRATION_MODE\n");
 	break;
+      case 'f':
+	globes->filter=1;
+	printf("FILTER_MODE\n");
+	break;
+      case 'r':
+	globes->record=1;
+	printf("RECORDING_MODE\n");
+	break;
+      case 'b':
+	globes->black=1;
+	break;
+	printf("BLACK_MODE\n");
+      case 'm':
+	globes->marker=1;
+	break;
+	printf("MARKER_MODE\n");
       default:
 	break;
       }
@@ -78,6 +122,7 @@ int main(int argc, char **argv){
 
     pthread_join(cap_thread, NULL);
     uninit_v4l2_stats();
+    uninit_cap_globes();
   }else if(fork()){     // floor
     floor_graphics(1920, 1920, ":0.5");
   }else if(fork()){     // walls
